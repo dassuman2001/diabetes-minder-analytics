@@ -16,29 +16,38 @@ import { useToast } from "@/components/ui/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from '@supabase/supabase-js';
 
+interface FormData {
+  pregnancies: number;
+  glucose: number;
+  bloodPressure: number;
+  skinThickness: number;
+  insulin: number;
+  bmi: number;
+  diabetesPedigree: number;
+  age: number;
+}
+
 interface PredictionResultProps {
-  data: {
-    pregnancies: number;
-    glucose: number;
-    bloodPressure: number;
-    skinThickness: number;
-    insulin: number;
-    bmi: number;
-    diabetesPedigree: number;
-    age: number;
+  data: FormData;
+}
+
+interface PredictionResponse {
+  probability: number;
+  shap_values: {
+    [key: string]: number;
   };
 }
 
 const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
+  import.meta.env.VITE_SUPABASE_URL || '',
+  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 );
 
 const PredictionResult = ({ data }: PredictionResultProps) => {
   const { toast } = useToast();
 
   // Query to get prediction and SHAP values
-  const { data: predictionData, isLoading } = useQuery({
+  const { data: predictionData, isLoading } = useQuery<PredictionResponse>({
     queryKey: ['prediction', data],
     queryFn: async () => {
       const { data: result, error } = await supabase.functions.invoke('predict-diabetes', {
