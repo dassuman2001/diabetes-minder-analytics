@@ -76,12 +76,16 @@
 }
 
 /* Animation utilities */
-.fade-in {
-  @apply animate-in fade-in duration-500;
-}
+@layer utilities {
+  .custom-fade-in {
+    @apply animate-in duration-500;
+    animation-name: fade-in;
+  }
 
-.slide-in {
-  @apply animate-in slide-in-from-bottom duration-500;
+  .custom-slide-in {
+    @apply animate-in duration-500;
+    animation-name: slide-in-from-bottom;
+  }
 }
 
 /* Progress bar animation */
