@@ -13,16 +13,44 @@ import {
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from '@supabase/supabase-js';
 
 interface PredictionResultProps {
-  data: any;
+  data: {
+    pregnancies: number;
+    glucose: number;
+    bloodPressure: number;
+    skinThickness: number;
+    insulin: number;
+    bmi: number;
+    diabetesPedigree: number;
+    age: number;
+  };
 }
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 const PredictionResult = ({ data }: PredictionResultProps) => {
   const { toast } = useToast();
-  
-  // Mock prediction result - in a real app, this would come from your AI model
-  const riskScore = 65;
+
+  // Query to get prediction and SHAP values
+  const { data: predictionData, isLoading } = useQuery({
+    queryKey: ['prediction', data],
+    queryFn: async () => {
+      const { data: result, error } = await supabase.functions.invoke('predict-diabetes', {
+        body: JSON.stringify(data)
+      });
+      
+      if (error) throw error;
+      return result;
+    }
+  });
+
+  const riskScore = predictionData?.probability * 100 || 0;
   const riskLevel = riskScore > 70 ? "High" : riskScore > 40 ? "Medium" : "Low";
   const riskColor =
     riskLevel === "High"
@@ -31,13 +59,16 @@ const PredictionResult = ({ data }: PredictionResultProps) => {
       ? "text-warning-500"
       : "text-success-500";
 
-  const contributingFactors = [
-    { name: "Glucose", value: 80 },
-    { name: "BMI", value: 60 },
-    { name: "Age", value: 40 },
-    { name: "Blood Pressure", value: 30 },
-    { name: "Family History", value: 20 },
-  ];
+  // Transform SHAP values into contributing factors
+  const contributingFactors = predictionData?.shap_values
+    ? Object.entries(predictionData.shap_values)
+        .map(([name, value]) => ({
+          name: name.charAt(0).toUpperCase() + name.slice(1).replace(/([A-Z])/g, ' $1'),
+          value: Math.abs(Number(value) * 100)
+        }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5)
+    : [];
 
   const handleDownload = () => {
     // Create a new window for the printable version
@@ -113,6 +144,14 @@ const PredictionResult = ({ data }: PredictionResultProps) => {
     };
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -135,7 +174,7 @@ const PredictionResult = ({ data }: PredictionResultProps) => {
             <div className="text-4xl font-bold mb-2">
               <span className={riskColor}>{riskLevel} Risk</span>
             </div>
-            <div className="text-gray-500">Risk Score: {riskScore}%</div>
+            <div className="text-gray-500">Risk Score: {riskScore.toFixed(1)}%</div>
           </Card>
         </motion.div>
       </div>
@@ -143,14 +182,14 @@ const PredictionResult = ({ data }: PredictionResultProps) => {
       {/* Contributing Factors Chart */}
       <Card className="p-6 glass-card">
         <h3 className="text-xl font-semibold text-gray-900 mb-4">
-          Contributing Factors
+          Contributing Factors (SHAP Values)
         </h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={contributingFactors} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" domain={[0, 100]} />
-              <YAxis dataKey="name" type="category" />
+              <YAxis dataKey="name" type="category" width={120} />
               <Tooltip />
               <Bar
                 dataKey="value"
@@ -166,20 +205,32 @@ const PredictionResult = ({ data }: PredictionResultProps) => {
       {/* Recommendations */}
       <Card className="p-6 glass-card">
         <h3 className="text-xl font-semibold text-gray-900 mb-4">
-          Recommendations
+          Personalized Recommendations
         </h3>
         <ul className="space-y-3 text-gray-600">
+          {riskLevel === "High" && (
+            <li className="flex items-start">
+              <span className="mr-2">•</span>
+              Urgent: Schedule an appointment with a healthcare provider for comprehensive diabetes screening
+            </li>
+          )}
           <li className="flex items-start">
             <span className="mr-2">•</span>
-            Maintain a balanced diet rich in whole grains, lean proteins, and vegetables
+            {predictionData?.shap_values?.glucose > 0 
+              ? "Monitor blood glucose levels regularly and maintain a balanced diet"
+              : "Maintain a balanced diet rich in whole grains, lean proteins, and vegetables"}
           </li>
           <li className="flex items-start">
             <span className="mr-2">•</span>
-            Engage in regular physical activity, aiming for 150 minutes per week
+            {predictionData?.shap_values?.bmi > 0
+              ? "Focus on reaching and maintaining a healthy BMI through diet and exercise"
+              : "Engage in regular physical activity, aiming for 150 minutes per week"}
           </li>
           <li className="flex items-start">
             <span className="mr-2">•</span>
-            Monitor blood glucose levels regularly
+            {predictionData?.shap_values?.age > 0 || predictionData?.shap_values?.diabetesPedigree > 0
+              ? "Due to genetic or age-related factors, maintain regular medical check-ups"
+              : "Monitor blood glucose levels regularly"}
           </li>
           <li className="flex items-start">
             <span className="mr-2">•</span>
