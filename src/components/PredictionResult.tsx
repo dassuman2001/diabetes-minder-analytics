@@ -12,12 +12,15 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 interface PredictionResultProps {
   data: any;
 }
 
 const PredictionResult = ({ data }: PredictionResultProps) => {
+  const { toast } = useToast();
+  
   // Mock prediction result - in a real app, this would come from your AI model
   const riskScore = 65;
   const riskLevel = riskScore > 70 ? "High" : riskScore > 40 ? "Medium" : "Low";
@@ -35,6 +38,80 @@ const PredictionResult = ({ data }: PredictionResultProps) => {
     { name: "Blood Pressure", value: 30 },
     { name: "Family History", value: 20 },
   ];
+
+  const handleDownload = () => {
+    // Create a new window for the printable version
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({
+        title: "Error",
+        description: "Please allow popups to download the report",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Generate the report content
+    const reportContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Diabetes Risk Assessment Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { color: #333; }
+            .risk-score { font-size: 24px; margin: 20px 0; }
+            .section { margin: 20px 0; }
+            .recommendations li { margin: 10px 0; }
+          </style>
+        </head>
+        <body>
+          <h1>Diabetes Risk Assessment Report</h1>
+          <div class="risk-score">
+            Risk Level: ${riskLevel} (${riskScore}%)
+          </div>
+          <div class="section">
+            <h2>Contributing Factors</h2>
+            ${contributingFactors
+              .map((factor) => `${factor.name}: ${factor.value}%`)
+              .join("<br>")}
+          </div>
+          <div class="section">
+            <h2>Recommendations</h2>
+            <ul class="recommendations">
+              <li>Maintain a balanced diet rich in whole grains, lean proteins, and vegetables</li>
+              <li>Engage in regular physical activity, aiming for 150 minutes per week</li>
+              <li>Monitor blood glucose levels regularly</li>
+              <li>Consider consulting with a healthcare professional for personalized advice</li>
+            </ul>
+          </div>
+          <div class="section">
+            <h2>Patient Data</h2>
+            ${Object.entries(data)
+              .map(([key, value]) => `<strong>${key}:</strong> ${value}<br>`)
+              .join("")}
+          </div>
+          <div style="margin-top: 40px; font-size: 12px;">
+            <p>This report was generated on ${new Date().toLocaleDateString()} and is for informational purposes only. 
+            Please consult with a healthcare professional for medical advice.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Write the content to the new window and print
+    printWindow.document.write(reportContent);
+    printWindow.document.close();
+
+    // Wait for content to load then print
+    printWindow.onload = () => {
+      printWindow.print();
+      toast({
+        title: "Success",
+        description: "Your report is being downloaded",
+      });
+    };
+  };
 
   return (
     <motion.div
@@ -113,7 +190,10 @@ const PredictionResult = ({ data }: PredictionResultProps) => {
 
       {/* Download Report Button */}
       <div className="flex justify-center">
-        <Button className="bg-primary hover:bg-primary-600 text-white">
+        <Button 
+          className="bg-primary hover:bg-primary-600 text-white"
+          onClick={handleDownload}
+        >
           <Download className="w-4 h-4 mr-2" />
           Download Detailed Report
         </Button>
