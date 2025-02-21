@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
@@ -6,31 +7,11 @@ import PredictionResult from "@/components/PredictionResult";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
-export interface FormData {
-  pregnancies: number;
-  glucose: number;
-  bloodPressure: number;
-  skinThickness: number;
-  insulin: number;
-  bmi: number;
-  diabetesPedigree: number;
-  age: number;
-}
-
 const Index = () => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<FormData>({
-    pregnancies: 0,
-    glucose: 0,
-    bloodPressure: 0,
-    skinThickness: 0,
-    insulin: 0,
-    bmi: 0,
-    diabetesPedigree: 0,
-    age: 0,
-  });
+  const [formData, setFormData] = useState({});
 
-  const handleFormSubmit = (data: FormData) => {
+  const handleFormSubmit = (data: any) => {
     setFormData(data);
     setCurrentStep(2);
   };
@@ -153,7 +134,7 @@ const features = [
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth={2}
-          d="M9 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
         />
       </svg>
     ),
